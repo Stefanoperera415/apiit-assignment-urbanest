@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:urbanest_app/controllers/booking_provider.dart';
 import 'package:urbanest_app/model/listing.dart';
@@ -66,12 +69,14 @@ class _BookingFormPageState extends State<BookingFormPage> {
         );
       },
     );
-    
+
     if (picked != null) {
       setState(() {
         if (isCheckIn) {
           _checkInDate = picked;
-          if (_checkOutDate.isBefore(_checkInDate.add(const Duration(days: 1)))) {
+          if (_checkOutDate.isBefore(
+            _checkInDate.add(const Duration(days: 1)),
+          )) {
             _checkOutDate = _checkInDate.add(const Duration(days: 1));
           }
         } else {
@@ -79,7 +84,9 @@ class _BookingFormPageState extends State<BookingFormPage> {
           if (picked.isBefore(_checkInDate.add(const Duration(days: 1)))) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Check-out must be at least one day after check-in'),
+                content: Text(
+                  'Check-out must be at least one day after check-in',
+                ),
                 backgroundColor: Colors.red,
               ),
             );
@@ -102,45 +109,71 @@ class _BookingFormPageState extends State<BookingFormPage> {
       context,
       listen: false,
     );
-    
+
     try {
+      // Format expiration date correctly (MM/YY to YYYY-MM)
+      final expDateParts = _expirationDateController.text.split('/');
+      final formattedExpDate =
+          '20${expDateParts[1]}-${expDateParts[0]}'; // Assuming 21st century
+
       await bookingProvider.createBooking(
         listingId: widget.listing.id!,
         checkInDate: _checkInDate.toIso8601String().split('T')[0],
         checkOutDate: _checkOutDate.toIso8601String().split('T')[0],
         guests: _guests,
         paymentMethod: _paymentMethod,
-        cardNumber: _cardNumberController.text,
-        expirationDate: _expirationDateController.text,
+        cardNumber: _cardNumberController.text.replaceAll(
+          ' ',
+          '',
+        ), // Remove spaces from card number
+        expirationDate: formattedExpDate,
         securityCode: _securityCodeController.text,
         country: _countryController.text,
         postalCode: _postalCodeController.text,
-        totalAmount: widget.listing.price * _checkOutDate.difference(_checkInDate).inDays.toDouble(),
+        totalAmount:
+            widget.listing.price *
+            _checkOutDate.difference(_checkInDate).inDays.toDouble(),
       );
 
       // Show success dialog
       await showDialog(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Booking Confirmed'),
-          content: const Text('Your booking has been successfully created!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Close booking form
-              },
-              child: const Text('OK'),
+        builder:
+            (context) => AlertDialog(
+              title: const Text('Booking Confirmed'),
+              content: const Text(
+                'Your booking has been successfully created!',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close dialog
+                    Navigator.pop(context); // Close booking form
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
             ),
-          ],
-        ),
       );
     } catch (e) {
+      String errorMessage = 'Error creating booking';
+      if (e.toString().contains('Validations failed')) {
+        errorMessage = 'Please check your input:\n';
+        // Parse validation errors if available
+        try {
+          final errorJson = jsonDecode(e.toString().split('Exception: ').last);
+          errorMessage += (errorJson['errors'] as Map<String, dynamic>).values
+              .map((v) => (v as List).join('\n'))
+              .join('\n');
+        } catch (_) {
+          errorMessage += e.toString();
+        }
+      } else {
+        errorMessage += ': ${e.toString()}';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error creating booking: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) {
@@ -170,10 +203,7 @@ class _BookingFormPageState extends State<BookingFormPage> {
     final totalPrice = widget.listing.price * days;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Complete Your Booking'),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text('Complete Your Booking'), elevation: 0),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Form(
@@ -195,15 +225,14 @@ class _BookingFormPageState extends State<BookingFormPage> {
                       Text(
                         widget.listing.title,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'LKR ${widget.listing.price.toStringAsFixed(2)} per night',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.grey[600],
-                            ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -214,9 +243,9 @@ class _BookingFormPageState extends State<BookingFormPage> {
               // Dates Section
               Text(
                 'Dates',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Row(
@@ -303,9 +332,9 @@ class _BookingFormPageState extends State<BookingFormPage> {
               // Guests Section
               Text(
                 'Guests',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -345,9 +374,9 @@ class _BookingFormPageState extends State<BookingFormPage> {
               // Payment Section
               Text(
                 'Payment Method',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -362,20 +391,21 @@ class _BookingFormPageState extends State<BookingFormPage> {
                   fillColor: Colors.grey[50],
                   prefixIcon: _buildPaymentMethodIcon(_paymentMethod),
                 ),
-                items: ['visa', 'amex', 'mastercard']
-                    .map(
-                      (method) => DropdownMenuItem(
-                        value: method,
-                        child: Row(
-                          children: [
-                            _buildPaymentMethodIcon(method),
-                            const SizedBox(width: 8),
-                            Text(method.toUpperCase()),
-                          ],
-                        ),
-                      ),
-                    )
-                    .toList(),
+                items:
+                    ['visa', 'amex', 'mastercard']
+                        .map(
+                          (method) => DropdownMenuItem(
+                            value: method,
+                            child: Row(
+                              children: [
+                                _buildPaymentMethodIcon(method),
+                                const SizedBox(width: 8),
+                                Text(method.toUpperCase()),
+                              ],
+                            ),
+                          ),
+                        )
+                        .toList(),
                 onChanged: (value) {
                   if (value != null) {
                     setState(() {
@@ -391,14 +421,17 @@ class _BookingFormPageState extends State<BookingFormPage> {
                   labelText: 'Card Number',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: Colors.grey[400]!),
                   ),
                   filled: true,
                   fillColor: Colors.grey[50],
                   prefixIcon: const Icon(Icons.credit_card),
-                  hintText: '1234 5678 9012 3456',
+                  hintText: '1234567890123456', // No spaces
                 ),
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(16),
+                ],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter card number';
@@ -419,7 +452,6 @@ class _BookingFormPageState extends State<BookingFormPage> {
                         labelText: 'Expiration Date',
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
-                          borderSide: BorderSide(color: Colors.grey[400]!),
                         ),
                         filled: true,
                         fillColor: Colors.grey[50],
@@ -431,7 +463,17 @@ class _BookingFormPageState extends State<BookingFormPage> {
                           return 'Please enter expiration date';
                         }
                         if (!RegExp(r'^\d{2}/\d{2}$').hasMatch(value)) {
-                          return 'Use MM/YY format';
+                          return 'Use MM/YY format (e.g., 12/25)';
+                        }
+                        final parts = value.split('/');
+                        final month = int.tryParse(parts[0]);
+                        final year = int.tryParse(parts[1]);
+
+                        if (month == null ||
+                            year == null ||
+                            month < 1 ||
+                            month > 12) {
+                          return 'Invalid date';
                         }
                         return null;
                       },
@@ -523,15 +565,15 @@ class _BookingFormPageState extends State<BookingFormPage> {
                     Text(
                       'Total Price',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       'LKR ${totalPrice.toStringAsFixed(2)}',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).primaryColor,
-                          ),
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
                     ),
                   ],
                 ),
@@ -550,24 +592,22 @@ class _BookingFormPageState extends State<BookingFormPage> {
                     ),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: _isSubmitting
-                      ? const CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation(Colors.white),
-                        )
-                      : const Text(
-                          'Confirm Booking',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                  child:
+                      _isSubmitting
+                          ? const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation(Colors.white),
+                          )
+                          : const Text(
+                            'Confirm Booking',
+                            style: TextStyle(fontSize: 16),
+                          ),
                 ),
               ),
               const SizedBox(height: 16),
               const Text(
                 'By confirming, you agree to our Terms of Service and Privacy Policy',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],
           ),

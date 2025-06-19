@@ -76,29 +76,14 @@ class ListingDetailsPage extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           color: isDarkMode ? Colors.white : Colors.black,
                         ),
+                       
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? colorScheme.primary.withOpacity(0.1)
-                            : Colors.grey.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '\LKR ${listing.price.toStringAsFixed(2)}',
-                        style: textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black,
-                        ),
-                      ),
-                    ),
+                    
                   ],
                 ),
+                //price container
+                
                 const SizedBox(height: 12),
                 // Location
                 Row(

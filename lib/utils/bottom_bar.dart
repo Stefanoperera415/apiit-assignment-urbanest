@@ -61,7 +61,11 @@ class BottomBarListing extends StatelessWidget {
 
   // Check if the listing is available (not sold, leased, or unavailable)
   bool _isListingAvailable() {
-    return !['sold', 'leased', 'unavailable'].contains(listing.status?.toLowerCase());
+    return ![
+      'sold',
+      'leased',
+      'unavailable',
+    ].contains(listing.status?.toLowerCase());
   }
 
   // Get the disabled reason text
@@ -115,6 +119,8 @@ class BottomBarListing extends StatelessWidget {
           child: Row(
             children: [
               // Left container showing price information
+              // Inside your BottomBarListing widget's build method, update the left container's decoration:
+              // Inside your BottomBarListing widget's build method, update the left container's decoration:
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
@@ -122,21 +128,54 @@ class BottomBarListing extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 1),
                     decoration: BoxDecoration(
                       border: Border.all(
-                        color: isDarkMode ? Colors.white24 : Colors.black12,
+                        color:
+                            !_isListingAvailable()
+                                ? isDarkMode
+                                    ? Colors
+                                        .amber // Brighter yellow for dark mode
+                                    : Colors
+                                        .yellow[700]! // Darker yellow for light mode
+                                : isDarkMode
+                                ? Colors.white24
+                                : Colors.black12,
+                        width: !_isListingAvailable() ? 1.5 : 0.8,
                       ),
                       borderRadius: BorderRadius.circular(12),
+                      color:
+                          !_isListingAvailable()
+                              ? isDarkMode
+                                  ? Colors.amber.withOpacity(
+                                    0.08,
+                                  ) // Subtle amber tint in dark mode
+                                  : Colors
+                                      .yellow[50]! // Light yellow background in light mode
+                              : Colors.transparent,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           _getPriceLabelText(),
-                          style: labelTextStyle,
+                          style: labelTextStyle.copyWith(
+                            color:
+                                !_isListingAvailable()
+                                    ? isDarkMode
+                                        ? Colors.amber[200]
+                                        : Colors.yellow[800]
+                                    : labelTextStyle.color,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           'LKR ${listing.price.toString()}',
-                          style: priceTextStyle,
+                          style: priceTextStyle.copyWith(
+                            color:
+                                !_isListingAvailable()
+                                    ? isDarkMode
+                                        ? Colors.amber[100]
+                                        : Colors.yellow[900]
+                                    : priceTextStyle.color,
+                          ),
                         ),
                         if (isDisabled)
                           Text(
@@ -154,57 +193,62 @@ class BottomBarListing extends StatelessWidget {
               const SizedBox(width: 12),
               // Right action button
               Expanded(
-                child: isDisabled
-                    ? ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDarkMode 
-                              ? Colors.grey[800] 
-                              : Colors.grey[300],
-                          foregroundColor: colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                child:
+                    isDisabled
+                        ? ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                isDarkMode
+                                    ? Colors.grey[800]
+                                    : Colors.grey[300],
+                            foregroundColor: colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
                           ),
-                          elevation: 0,
-                        ),
-                        onPressed: null, // Disabled button
-                        child: Text(
-                          _getActionButtonText(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isDarkMode ? Colors.white70 : Colors.black54,
-                            fontWeight: FontWeight.bold,
+                          onPressed: null, // Disabled button
+                          child: Text(
+                            _getActionButtonText(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color:
+                                  isDarkMode ? Colors.white70 : Colors.black54,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                        : ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                isDarkMode
+                                    ? Colors.white
+                                    : const Color.fromARGB(255, 50, 33, 26),
+                            foregroundColor: colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => _getActionPage(),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            _getActionButtonText(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDarkMode ? Colors.black : Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      )
-                    : ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDarkMode 
-                              ? Colors.white 
-                              : const Color.fromARGB(255, 50, 33, 26),
-                          foregroundColor: colorScheme.onPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 18),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 0,
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => _getActionPage()),
-                          );
-                        },
-                        child: Text(
-                          _getActionButtonText(),
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: isDarkMode ? Colors.black : Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
               ),
             ],
           ),
